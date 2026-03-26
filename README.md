@@ -3,7 +3,7 @@ Powershell script for non compliant devices
 
 
 Step by step guide on how to implement this script
-
+==================================================
 Press Windows Key + R on your keyboard
 Type powershell and press Enter
 Right-click on PowerShell and select "Run as administrator"
@@ -41,17 +41,18 @@ Device Name: DESKTOP-XYZ789 | User: jane.smith@company.com
 
 
 Current requirements on system to be able to run the script
+===========================================================
 "Requires Intune Administrator role minimum" 
 
 
 
 What this script will do
-
+========================
 Create a report that shows the device name and the user who has a non compliant device
 
 
 If you want to run this script on a schedule (e.g., daily), you can create a Windows Task Scheduler job:
-
+========================================================================================================
 Open Task Scheduler (search for it in Windows)
 Click Create Basic Task
 Name it: Intune Compliance Check
