@@ -38,12 +38,10 @@ Found 3 non-compliant device(s):
 Device Name: LAPTOP-ABC123 | User: john.doe@company.com
 Device Name: DESKTOP-XYZ789 | User: jane.smith@company.com
 
-Disconnecting from Microsoft Graph...
 ======================================================
 
-======================================================
 Current requirements on system to be able to run the script
-Requires Intune Administrator role minimum
+"Requires Intune Administrator role minimum" 
 
 ======================================================
 
