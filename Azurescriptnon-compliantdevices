@@ -1,0 +1,151 @@
+# ========================================
+# Azure/Intune Non-Compliant Devices Script
+# Purpose: Detect and list all non-compliant devices in Intune
+# ========================================
+
+# STEP 1: CHECK AND INSTALL REQUIRED MODULES
+# ============================================
+# This section verifies that the necessary PowerShell modules are installed.
+# If they're not present, the script automatically installs them.
+# These modules are required to communicate with Microsoft Graph API and manage Intune devices.
+
+Write-Host "Checking for required modules..." -ForegroundColor Yellow
+
+# Define an array of module names that we need
+$requiredModules = @("Microsoft.Graph.Intune", "Microsoft.Graph.DeviceManagement")
+
+# Loop through each module to check if it exists
+foreach ($module in $requiredModules) {
+    # Get-Module with -ListAvailable checks if the module is installed anywhere on the system
+    if (-not (Get-Module -Name $module -ListAvailable)) {
+        Write-Host "Installing module: $module" -ForegroundColor Yellow
+        # Install-Module downloads and installs the module from PowerShell Gallery
+        # -Force overwrites any existing version
+        # -AllowClobber allows overwriting commands from other modules
+        Install-Module -Name $module -Force -AllowClobber
+    }
+}
+
+# STEP 2: IMPORT REQUIRED MODULES
+# ================================
+# Import-Module loads the modules into the current PowerShell session
+# so we can use their commands. This must be done after installation.
+
+Write-Host "Importing modules..." -ForegroundColor Yellow
+Import-Module -Name Microsoft.Graph.Intune
+Import-Module -Name Microsoft.Graph.DeviceManagement
+
+# STEP 3: AUTHENTICATE WITH MICROSOFT GRAPH
+# ===========================================
+# Connect-MgGraph establishes a secure connection to Microsoft Graph API.
+# -Scopes specifies what permissions we need (in this case, read access to managed devices).
+# This will prompt you to sign in with your Azure/Microsoft 365 credentials.
+# You need appropriate admin permissions (Global Admin or Intune Administrator role).
+
+Write-Host "Connecting to Microsoft Graph..." -ForegroundColor Yellow
+Connect-MgGraph -Scopes "DeviceManagementManagedDevices.Read.All" -ErrorAction Stop
+
+# STEP 4: RETRIEVE DEVICES AND FILTER FOR NON-COMPLIANT ONES
+# ===========================================================
+# This section queries all managed devices from Intune and filters them
+# to show only those with a "NonCompliant" compliance state.
+
+Write-Host "Fetching non-compliant devices from Intune..." -ForegroundColor Green
+
+try {
+    # Get-MgDeviceManagementManagedDevice retrieves all devices managed by Intune
+    # -All parameter ensures we get ALL devices, not just the first page of results
+    $allDevices = Get-MgDeviceManagementManagedDevice -All
+    
+    # Where-Object filters the devices based on a condition
+    # We're looking for devices where ComplianceState equals "NonCompliant"
+    $nonCompliantDevices = $allDevices | Where-Object { $_.ComplianceState -eq "NonCompliant" }
+    
+    # STEP 5: CHECK IF ANY NON-COMPLIANT DEVICES WERE FOUND
+    # =====================================================
+    # This conditional checks the count of non-compliant devices.
+    # If none are found, we display a success message.
+    # If some are found, we proceed to display and export the data.
+    
+    if ($nonCompliantDevices.Count -eq 0) {
+        Write-Host "No non-compliant devices found." -ForegroundColor Green
+    } else {
+        Write-Host "Found $($nonCompliantDevices.Count) non-compliant device(s)!" -ForegroundColor Red
+        Write-Host ""
+        
+        # STEP 6: CREATE AN ARRAY TO STORE RESULTS
+        # ========================================
+        # We initialize an empty array that will hold all the device information
+        # in a structured format for display and export.
+        $results = @()
+        
+        # STEP 7: LOOP THROUGH EACH NON-COMPLIANT DEVICE
+        # ==============================================
+        # For each non-compliant device, we extract relevant information
+        # and create a custom object with properties we want to display.
+        
+        foreach ($device in $nonCompliantDevices) {
+            # Create a hashtable (dictionary) with device properties
+            # Each property name is on the left, and the device attribute is on the right
+            $deviceInfo = @{
+                "Device Name"      = $device.DeviceName          # Name of the device
+                "Device ID"        = $device.Id                  # Unique identifier in Intune
+                "OS"               = $device.OperatingSystem     # Operating system (Windows, iOS, Android, etc.)
+                "Compliance State" = $device.ComplianceState     # Current compliance status
+                "Last Sync"        = $device.LastSyncDateTime    # When the device last reported to Intune
+                "User Principal"   = $device.UserPrincipalName   # Email/username of the device owner
+                "Management State" = $device.ManagementState     # Whether device is managed, unmanaged, etc.
+                "Model"            = $device.Model               # Device model
+                "Manufacturer"     = $device.Manufacturer        # Device manufacturer (Dell, HP, Apple, etc.)
+            }
+            
+            # Convert the hashtable to a PowerShell object and add it to our results array
+            $results += New-Object PSObject -Property $deviceInfo
+        }
+        
+        # STEP 8: DISPLAY RESULTS IN TABLE FORMAT
+        # ========================================
+        # Format-Table displays the results in a nicely formatted table in the console
+        # -AutoSize adjusts column widths to fit the content
+        $results | Format-Table -AutoSize
+        
+        # STEP 9: EXPORT TO CSV FILE
+        # ===========================
+        # Export-Csv saves the results to a comma-separated values file
+        # which can be opened in Excel or other spreadsheet applications.
+        # The filename includes a timestamp so each run creates a separate file.
+        # Get-Date -Format 'yyyy-MM-dd_HHmmss' creates a timestamp (e.g., 2026-03-26_143022)
+        
+        $exportPath = "$PSScriptRoot\NonCompliantDevices_$(Get-Date -Format 'yyyy-MM-dd_HHmmss').csv"
+        $results | Export-Csv -Path $exportPath -NoTypeInformation -Encoding UTF8
+        Write-Host ""
+        Write-Host "Results exported to: $exportPath" -ForegroundColor Cyan
+        
+        # STEP 10: EXPORT TO JSON FILE
+        # ============================
+        # JSON is another common data format that's useful for integration with other tools
+        # ConvertTo-Json converts the PowerShell objects to JSON format
+        # Out-File writes the JSON data to a file
+        
+        $jsonExportPath = "$PSScriptRoot\NonCompliantDevices_$(Get-Date -Format 'yyyy-MM-dd_HHmmss').json"
+        $results | ConvertTo-Json | Out-File -Path $jsonExportPath -Encoding UTF8
+        Write-Host "JSON report exported to: $jsonExportPath" -ForegroundColor Cyan
+    }
+}
+catch {
+    # STEP 11: ERROR HANDLING
+    # =======================
+    # If anything goes wrong during device retrieval, the catch block catches the error
+    # and displays it in a red color so you know something went wrong.
+    Write-Host "Error retrieving devices: $_" -ForegroundColor Red
+}
+
+# STEP 12: DISCONNECT FROM MICROSOFT GRAPH
+# =========================================
+# Disconnect-MgGraph closes the connection to Microsoft Graph API.
+# This is good practice to clean up and end the authenticated session.
+# Without this, you may leave an active session that could be a security concern.
+
+Write-Host ""
+Write-Host "Disconnecting from Microsoft Graph..." -ForegroundColor Yellow
+Disconnect-MgGraph
