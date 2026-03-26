@@ -37,7 +37,6 @@ Found 3 non-compliant device(s):
 
 Device Name: LAPTOP-ABC123 | User: john.doe@company.com
 Device Name: DESKTOP-XYZ789 | User: jane.smith@company.com
-Device Name: SURFACE-PRO-001 | User: mike.wilson@company.com
 
 Disconnecting from Microsoft Graph...
 ======================================================
