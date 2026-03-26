@@ -48,10 +48,10 @@ Requires Intune Administrator role minimum
 ======================================================
 
 What this script will do
-======================================================
+
 Create a report that shows the device name and the user who has a non compliant device
 
-======================================================
+
 If you want to run this script on a schedule (e.g., daily), you can create a Windows Task Scheduler job:
 
 Open Task Scheduler (search for it in Windows)
