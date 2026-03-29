@@ -1,202 +1,61 @@
+Powershell script for non compliant devices 
 
-```powershell
-cd C:\Users\YourUsername\Documents
-```
-Replace `YourUsername` with your actual Windows username.
 
-### Step 3: Create the Script File
-Option A - Using Notepad:
-```powershell
-notepad Get-NonCompliantDevices.ps1
-```
 
-Option B - Using PowerShell directly:
-```powershell
-New-Item -Path "Get-NonCompliantDevices.ps1" -ItemType File
-```
+Step by step guide on how to implement this script
+==================================================
+Press Windows Key + R on your keyboard
+Type powershell and press Enter
+Right-click on PowerShell and select "Run as administrator"
+Click "Yes" when prompted by User Account Control
 
-### Step 4: Copy and Save the Script
-1. Copy the entire script from the repository
-2. Paste it into the file (Ctrl + V)
-3. Save the file (Ctrl + S or File → Save)
-4. Close the editor
+In PowerShell, navigate to where you want to save the script (or use the default location):
+Example "cd C:\Users\YourUsername\Documents" (Replace YourUsername with your actual Windows username)
 
-### Step 5: Enable Script Execution
-Run this command in PowerShell:
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-```
-- Type **Y** and press **Enter** when prompted
-- Wait for the command to complete
+Create a new PowerShell script file
+"notepad Get-NonCompliantDevices.ps1"
 
----
+Copy the entire script
+Paste it into the Notepad window (Ctrl + V)
+Click File → Save (or Ctrl + S)
+Close Notepad
 
-## Usage
+Back in PowerShell, run this command to allow script execution: "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser"
+Type Y and press Enter when prompted
+Wait for the command to complete
 
-### Running the Script Manually
+In PowerShell, run the script: ".\Get-NonCompliantDevices.ps1"
 
-In PowerShell, execute:
-```powershell
-.\Get-NonCompliantDevices.ps1
-```
+A browser window will automatically open
+Sign in with your Azure/Microsoft 365 admin account
+You'll see a permissions request - click "Accept" or "Consent"
+After successful authentication, return to PowerShell
+The script will begin fetching devices
 
-### What Happens
-1. The script checks for required modules and installs them if needed
-2. A browser window will automatically open
-3. Sign in with your **Azure/Microsoft 365 admin account**
-4. Click **"Accept"** or **"Consent"** on the permissions request
-5. Return to PowerShell
-6. The script fetches devices from Intune and displays results
+The script will display output like this: 
+Found 3 non-compliant device(s):
 
-### Expected Output
+Device Name: LAPTOP-ABC123 | User: john.doe@company.com
+Device Name: DESKTOP-XYZ789 | User: jane.smith@company.com
 
-**If no inactive devices are found:**
-```
-Checking for required modules...
-Connecting to Microsoft Graph...
-Fetching devices inactive for 90+ days...
-No inactive devices found.
-```
 
-**If inactive devices are found:**
-```
-Checking for required modules...
-Connecting to Microsoft Graph...
-Fetching devices inactive for 90+ days...
-Found 3 inactive device(s):
 
-Device Name: LAPTOP-ABC123 | User: john.doe@company.com | Last Sync: 2025-09-15T10:30:00Z
-Device Name: DESKTOP-XYZ789 | User: jane.smith@company.com | Last Sync: 2025-08-20T14:15:00Z
-Device Name: TABLET-QRS456 | User: bob.wilson@company.com | Last Sync: Never synced
-```
+Current requirements on system to be able to run the script
+===========================================================
+"Requires Intune Administrator role minimum" 
 
----
 
-## Scheduling with Windows Task Scheduler
 
-To run this script automatically (e.g., daily), you can use Windows Task Scheduler:
+What this script will do
+========================
+Create a report that shows the device name and the user who has a non compliant device
 
-### Step 1: Open Task Scheduler
-1. Press **Windows Key + R**
-2. Type `taskschd.msc` and press **Enter**
-3. Or search for "Task Scheduler" in Windows
 
-### Step 2: Create a Basic Task
-1. Click **"Create Basic Task..."** in the right panel
-2. Name it: `Intune Inactive Devices Check`
-3. Description: `Daily report of devices inactive for 90+ days`
-4. Click **"Next"**
-
-### Step 3: Set the Trigger
-1. Select your desired schedule (e.g., **Daily**)
-2. Set the time (e.g., **9:00 AM**)
-3. Click **"Next"**
-
-### Step 4: Set the Action
-1. Select **"Start a program"**
-2. Program/script: `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`
-3. Add arguments (all on one line):
-   ```
-   -NoProfile -ExecutionPolicy Bypass -File "C:\Users\YourUsername\Documents\Get-NonCompliantDevices.ps1"
-   ```
-4. Click **"Next"** and **"Finish"**
-
-### Step 5: Redirect Output (Optional)
-To save the output to a log file:
-1. Edit the task
-2. Under **Actions**, modify the arguments to:
-   ```
-   -NoProfile -ExecutionPolicy Bypass -File "C:\Users\YourUsername\Documents\Get-NonCompliantDevices.ps1" | Out-File -FilePath "C:\Users\YourUsername\Documents\InactiveDevices.log" -Append
-   ```
-
----
-
-## Script Sections Explained
-
-### Section 1: Module Check
-- Verifies that `Microsoft.Graph.DeviceManagement` is installed
-- Automatically installs if missing
-
-### Section 2: Module Import
-- Imports the DeviceManagement module for use
-
-### Section 3: Authentication
-- Connects to Microsoft Graph with required permissions
-- Opens browser for interactive sign-in
-
-### Section 4: Device Retrieval & Filtering
-- **Step 4A:** Retrieves all managed devices
-- **Step 4B:** Calculates the 90-day cutoff date
-- **Step 4C:** Filters devices with no sync or last sync before 90 days ago
-- **Step 4D-4F:** Displays results with device details
-
-### Section 5: Error Handling
-- Catches and displays any errors that occur
-
-### Section 6: Cleanup
-- Disconnects from Microsoft Graph
-
----
-
-## Troubleshooting
-
-### Error: "Access Denied" or "Insufficient Permissions"
-- **Solution:** Ensure your account has the **Intune Administrator** role or higher
-- Contact your Azure AD administrator if needed
-
-### Error: "Module Not Found"
-- **Solution:** The script will attempt to install it automatically. If it fails, manually install:
-  ```powershell
-  Install-Module -Name Microsoft.Graph.DeviceManagement -Force -AllowClobber
-  ```
-
-### Error: "Script execution disabled on this system"
-- **Solution:** Run this command:
-  ```powershell
-  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-  ```
-
-### Browser doesn't open for authentication
-- **Solution:** Check if your system has internet connectivity
-- Ensure no firewall is blocking the connection
-- Try running PowerShell in a different network context
-
-### No devices are returned
-- **Possible cause:** You have no managed devices in Intune
-- **Possible cause:** All devices have synced within the last 90 days
-
----
-
-## Output and Next Steps
-
-Once you have the list of inactive devices, consider:
-- **Retire devices:** Remove devices from Intune if no longer in use
-- **Contact users:** Reach out to users with inactive devices
-- **Re-provision:** Sync inactive devices if they're still in use
-- **Archive logs:** Save reports for compliance/audit purposes
-
----
-
-## Security Considerations
-
-⚠️ **Important:**
-- Store this script securely; it requires admin credentials
-- Avoid sharing the script with users who shouldn't have Intune access
-- Consider limiting Task Scheduler execution to specific times
-- Log output may contain sensitive user information; protect accordingly
-
----
-
-## Support & Contribution
-
-For issues, questions, or improvements, please:
-1. Check the troubleshooting section above
-2. Review your Intune and Azure AD settings
-3. Consult Microsoft documentation for Graph API changes
-4. Submit an issue or pull request on this repository
-
----
-
-## License
-
-This script is provided as-is for use by authorized administrators.
+If you want to run this script on a schedule (e.g., daily), you can create a Windows Task Scheduler job:
+========================================================================================================
+Open Task Scheduler (search for it in Windows)
+Click Create Basic Task
+Name it: Intune Compliance Check
+Set the trigger (e.g., Daily at 9 AM)
+Set the action to: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+Add arguments: -NoProfile -ExecutionPolicy Bypass -File "C:\Users\YourUsername\Documents\Get-NonCompliantDevices.ps1"
