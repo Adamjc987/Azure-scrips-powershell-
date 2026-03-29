@@ -1,0 +1,61 @@
+Powershell script for non compliant devices 
+
+
+
+Step by step guide on how to implement this script
+==================================================
+Press Windows Key + R on your keyboard
+Type powershell and press Enter
+Right-click on PowerShell and select "Run as administrator"
+Click "Yes" when prompted by User Account Control
+
+In PowerShell, navigate to where you want to save the script (or use the default location):
+Example "cd C:\Users\YourUsername\Documents" (Replace YourUsername with your actual Windows username)
+
+Create a new PowerShell script file
+"notepad Get-NonCompliantDevices.ps1"
+
+Copy the entire script
+Paste it into the Notepad window (Ctrl + V)
+Click File → Save (or Ctrl + S)
+Close Notepad
+
+Back in PowerShell, run this command to allow script execution: "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser"
+Type Y and press Enter when prompted
+Wait for the command to complete
+
+In PowerShell, run the script: ".\Get-NonCompliantDevices.ps1"
+
+A browser window will automatically open
+Sign in with your Azure/Microsoft 365 admin account
+You'll see a permissions request - click "Accept" or "Consent"
+After successful authentication, return to PowerShell
+The script will begin fetching devices
+
+The script will display output like this: 
+Found 3 non-compliant device(s):
+
+Device Name: LAPTOP-ABC123 | User: john.doe@company.com
+Device Name: DESKTOP-XYZ789 | User: jane.smith@company.com
+
+
+
+Current requirements on system to be able to run the script
+===========================================================
+"Requires Intune Administrator role minimum" 
+
+
+
+What this script will do
+========================
+Create a report that shows the device name and the user who has a non compliant device
+
+
+If you want to run this script on a schedule (e.g., daily), you can create a Windows Task Scheduler job:
+========================================================================================================
+Open Task Scheduler (search for it in Windows)
+Click Create Basic Task
+Name it: Intune Compliance Check
+Set the trigger (e.g., Daily at 9 AM)
+Set the action to: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+Add arguments: -NoProfile -ExecutionPolicy Bypass -File "C:\Users\YourUsername\Documents\Get-NonCompliantDevices.ps1"
