@@ -1,103 +1,90 @@
-# ========================================
-# Azure/Intune Non-Compliant Devices Script
-# Purpose: List non-compliant devices with names only
-# ========================================
+from azure.identity import DefaultAzureCredential
 
-# SECTION 1: CHECK AND INSTALL REQUIRED MODULES
-# =============================================
-# What it does: Verifies that the Microsoft.Graph.DeviceManagement module is installed.
-# If it's not found, this section automatically downloads and installs it from PowerShell Gallery.
-# Why it matters: This module is required to connect to and query Azure/Intune devices.
+======================================================================
 
-Write-Host "Checking for required modules..." -ForegroundColor Yellow
-if (-not (Get-Module -Name Microsoft.Graph.DeviceManagement -ListAvailable)) {
-    Write-Host "Installing module: Microsoft.Graph.DeviceManagement" -ForegroundColor Yellow
-    Install-Module -Name Microsoft.Graph.DeviceManagement -Force -AllowClobber
+#Authenticate with credentials
+#TENANT_ID = Domain
+#CLIENT_ID = USERNAME
+#CLIENT_SECRET = PASSWORD
+
+credential = ClientSecretCredential(
+  tenant_id=TENANT_ID,
+  client_id=CLIENT_ID
+  client_secret=CLIENT_SECRET
+)
+
+resource_client = ResourceManagementClient(credential, subscription_id)
+
+=======================================================================
+
+#Inactivity rule for 90 days
+#Gets todays date and subtracts 90 days
+
+INACTIVE_DAYS = 90
+cutoff_date = datetime.utcnow() - timedelta(days=INACTIVE_DAYS)
+
+======================================================================
+
+#Set request headers (proof you are authenticated)
+
+headers = {
+    "authorization": f"Bearer {token}"
 }
 
-# SECTION 2: IMPORT THE MODULE
-# ============================
-# What it does: Loads the Microsoft.Graph.DeviceManagement module into the current PowerShell session.
-# Why it matters: This makes all the module's commands available for use in this script.
-# Note: This must be done after installation.
+======================================================================
 
-Import-Module -Name Microsoft.Graph.DeviceManagement
+#Request the graph to give only the name, email and last sign-in
 
-# SECTION 3: AUTHENTICATE WITH MICROSOFT GRAPH
-# ============================================
-# What it does: Establishes a secure connection to Microsoft Graph API using your credentials.
-# The -Scopes parameter specifies that we only need permission to READ device information.
-# Why it matters: Without authentication, we cannot access any Intune data.
-# Note: A browser window will open asking you to sign in with your Azure/Microsoft 365 account.
-# You must have Global Administrator or Intune Administrator role to proceed.
+url = "https://graph.microsoft.com/v1.0/users?$select=displayName,userPrincipalName,signInActiviy"
 
-Write-Host "Connecting to Microsoft Graph..." -ForegroundColor Yellow
-Connect-MgGraph -Scopes "DeviceManagementManagedDevices.Read.All" -ErrorAction Stop
+======================================================================
 
-# SECTION 4: RETRIEVE DEVICES AND FILTER
-# ======================================
-# What it does: This entire try-catch block fetches all devices from Intune and filters for non-compliant ones.
-# The try block runs the commands, and the catch block handles any errors that occur.
+#Graph returns users in pages (keeps requesting data until it has gone through all pages)
 
-Write-Host "Fetching non-compliant devices..." -ForegroundColor Green
+while url:
 
-try {
-    # STEP 4A: GET ALL MANAGED DEVICES
-    # ===============================
-    # What it does: Retrieves all devices currently managed by Intune.
-    # The -All parameter ensures we get EVERY device, not just the first batch.
-    # This might take a few seconds depending on how many devices you have.
-    
-    $allDevices = Get-MgDeviceManagementManagedDevice -All
-    
-    # STEP 4B: FILTER FOR NON-COMPLIANT DEVICES ONLY
-    # =============================================
-    # What it does: Uses Where-Object to filter the device list.
-    # It only keeps devices where ComplianceState equals "NonCompliant".
-    # All compliant devices are excluded from the results.
-    
-    $nonCompliantDevices = $allDevices | Where-Object { $_.ComplianceState -eq "NonCompliant" }
-    
-    # STEP 4C: CHECK IF ANY NON-COMPLIANT DEVICES EXIST
-    # ================================================
-    # What it does: Checks the count of non-compliant devices found.
-    # If the count is 0, no non-compliant devices exist (good news!).
-    # If the count is greater than 0, we display the list.
-    
-    if ($nonCompliantDevices.Count -eq 0) {
-        Write-Host "No non-compliant devices found." -ForegroundColor Green
-    } else {
-        # STEP 4D: DISPLAY THE COUNT
-        # =========================
-        # What it does: Shows how many non-compliant devices were found in red text.
-        Write-Host "Found $($nonCompliantDevices.Count) non-compliant device(s):" -ForegroundColor Red
-        Write-Host ""
-        
-        # STEP 4E: LOOP THROUGH AND DISPLAY EACH DEVICE
-        # ============================================
-        # What it does: Iterates through each non-compliant device one by one.
-        # For each device, it displays the Device Name and the User Principal Name (email).
-        # The information is displayed in cyan (light blue) text for easy reading.
-        
-        foreach ($device in $nonCompliantDevices) {
-            Write-Host "Device Name: $($device.DeviceName) | User: $($device.UserPrincipalName)" -ForegroundColor Cyan
-        }
-    }
-}
-catch {
-    # SECTION 5: ERROR HANDLING
-    # =========================
-    # What it does: If any error occurs during the try block (connection failed, network issue, etc.),
-    # this catch block catches it and displays the error message in red text.
-    # Why it matters: Helps you troubleshoot if something goes wrong.
-    
-    Write-Host "Error: $_" -ForegroundColor Red
-}
+======================================================================
 
-# SECTION 6: DISCONNECT FROM MICROSOFT GRAPH
-# ==========================================
-# What it does: Closes the connection to Microsoft Graph API.
-# Why it matters: It's a best practice to clean up and end your session when done.
-# This prevents leaving unnecessary active sessions and improves security.
+#Make the api request
+#response is made in JSON (data format)
 
-Disconnect-MgGraph
+response = requests.get(url, headers=headers)
+data = response.json()
+
+======================================================================
+
+#loops through every user returned
+
+for user in data.get("value", []):
+
+======================================================================
+
+#Gets users details name, email and last sign in date
+
+name = user.get("displayName")
+email + user.get("userPrincipalName")
+sign_in = user.get("signInActivity", {}).get("LastSignInDateTime")
+
+======================================================================
+
+#check for users who have never signed in but had accounts created
+
+else:
+    inactive _users.append((name, email, "Never signed in"))
+
+======================================================================
+
+#Allows script to go though mutliple pages of users 
+
+url = data.get("@odata.nextLink")
+
+======================================================================
+
+#print results 
+
+for user in inactive_users:
+    print(user)
+
+print(f"\nTotal inactive users: {Len(inactive_users)}")
+
+======================================================================
