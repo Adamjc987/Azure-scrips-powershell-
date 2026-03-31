@@ -1,34 +1,49 @@
-#connect to the mcgraph "opens a browser to automaticlly sign in"
-
+#Requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.Users, Microsoft.Graph.Reports
+ 
+# Connect
 Connect-MgGraph -Scopes "User.Read.All", "AuditLog.Read.All", "Reports.Read.All" -NoWelcome
-
-
-
-#Pulls every user from your Azure AD tenant, requesting only the specific fields needed for the compliance checks — keeping it efficient.
-
-$users = Get-MgUser -All -Property "Id,DisplayName,..."
-
-
-
-#Grabs MFA registration status for each user and stores it in a hashtable ($mfaData) keyed by user ID so it can be looked up quickly. Wrapped in a try/catch in case your tenant doesn't have the right licence.
-
-
-Get-MgReportAuthenticationMethodUserRegistrationDetail -All
-
-
-
-#Only users with at least one issue get added to the $nonCompliant list, with their name, UPN, and a comma-separated summary of their issues.
-
-if ($issues.Count -gt 0) { $nonCompliant.Add(...) }
-
-
-
-#If no issues are found, prints a green success message. Otherwise prints a red header with the count and displays the full list as a formatted table.
-
-$nonCompliant | Format-Table Name, UPN, Issues -AutoSize -Wrap
-
-
-
-#Disconnects graph when done
-
+ 
+# Fetch all users
+$users = Get-MgUser -All -Property "Id,DisplayName,UserPrincipalName,AccountEnabled,AssignedLicenses,SignInActivity,PasswordPolicies"
+ 
+# Fetch MFA registration data
+$mfaData = @{}
+try {
+    Get-MgReportAuthenticationMethodUserRegistrationDetail -All | ForEach-Object { $mfaData[$_.Id] = $_ }
+} catch {
+    Write-Warning "Could not retrieve MFA data (requires Reports.Read.All and Azure AD P1/P2)."
+}
+ 
+$staleDate = (Get-Date).AddDays(-90)
+$nonCompliant = [System.Collections.Generic.List[PSCustomObject]]::new()
+ 
+foreach ($user in $users) {
+    $issues = [System.Collections.Generic.List[string]]::new()
+ 
+    if (-not $user.AccountEnabled)                                                          { $issues.Add("Sign-in disabled") }
+    if ($user.AssignedLicenses.Count -eq 0)                                                { $issues.Add("No licence") }
+    if ($user.PasswordPolicies -match "DisablePasswordExpiration")                         { $issues.Add("Password never expires") }
+    if ($mfaData.ContainsKey($user.Id) -and -not $mfaData[$user.Id].IsMfaRegistered)      { $issues.Add("MFA not registered") }
+ 
+    $lastSignIn = $user.SignInActivity?.LastSignInDateTime
+    if ($lastSignIn -and [datetime]$lastSignIn -lt $staleDate)                             { $issues.Add("Stale (last sign-in: $([datetime]$lastSignIn | Get-Date -Format 'yyyy-MM-dd'))") }
+    elseif (-not $lastSignIn)                                                              { $issues.Add("Never signed in") }
+ 
+    if ($issues.Count -gt 0) {
+        $nonCompliant.Add([PSCustomObject]@{
+            Name   = $user.DisplayName
+            UPN    = $user.UserPrincipalName
+            Issues = $issues -join ", "
+        })
+    }
+}
+ 
+# Display results
+if ($nonCompliant.Count -eq 0) {
+    Write-Host "No non-compliant users found." -ForegroundColor Green
+} else {
+    Write-Host "`nNon-Compliant Users ($($nonCompliant.Count) found):`n" -ForegroundColor Red
+    $nonCompliant | Format-Table Name, UPN, Issues -AutoSize -Wrap
+}
+ 
 Disconnect-MgGraph | Out-Null
