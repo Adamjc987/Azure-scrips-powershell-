@@ -1,1 +1,1 @@
-Powershell scripts for azure / intune to run basic commands to get certian data 
+Powershell scripts for azure to run basic commands to get data more conviniently and faster.
