@@ -1,6 +1,6 @@
-Install-Module Microsoft.Graph.Users -Scope CurrentUser -Force -ErrorAction SilentlyContinue
+Remove-Module Microsoft.Graph.* -Force -ErrorAction SilentlyContinue
+Import-Module Microsoft.Graph.Authentication
 Import-Module Microsoft.Graph.Users
-
 
 Connect-MgGraph -Scopes "User.Read.All" -NoWelcome
 
