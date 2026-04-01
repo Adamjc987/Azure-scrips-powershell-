@@ -1,63 +1,92 @@
-Powershell script for non compliant devices 
+# Azure User Compliance Checker
 
+A PowerShell script that connects to Microsoft Graph and identifies non-compliant users in your Azure Active Directory tenant.
 
+---
 
-Step by step guide on how to implement this script
-==================================================
-Press Windows Key + R on your keyboard
-Type powershell and press Enter
-Right-click on PowerShell and select "Run as administrator"
-Click "Yes" when prompted by User Account Control
+## What It Checks
 
-In PowerShell, navigate to where you want to save the script (or use the default location):
-Example "cd C:\Users\YourUsername\Documents" (Replace YourUsername with your actual Windows username)
+| Check | Description |
+|---|---|
+| **Sign-in disabled** | User account has been disabled |
+| **No licence** | User has no assigned Microsoft licence |
+| **Password never expires** | User's password policy is set to never expire |
+| **MFA not registered** | User has not registered a second authentication method |
 
-Create a new PowerShell script file
-"notepad Get-NonCompliantDevices.ps1"
+> **Note:** Sign-in activity (stale/inactive accounts) checks are not included as they require an Azure AD Premium licence.
 
-Copy the entire script
-Paste it into the Notepad window (Ctrl + V)
-Click File → Save (or Ctrl + S)
-Close Notepad
+---
 
-Back in PowerShell, run this command to allow script execution: "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser"
-Type Y and press Enter when prompted
-Wait for the command to complete
+## Requirements
 
-In PowerShell, run the script: ".\Get-NonCompliantDevices.ps1"
+- Azure Cloud Shell (PowerShell mode)
+- The following PowerShell modules:
+  - `Microsoft.Graph.Authentication`
+  - `Microsoft.Graph.Users`
+- An account with one of the following Azure roles:
+  - **Global Administrator**
+  - **Global Reader**
+  - **Security Reader**
 
-A browser window will automatically open
-Sign in with your Azure/Microsoft 365 admin account
-You'll see a permissions request - click "Accept" or "Consent"
-After successful authentication, return to PowerShell
-The script will begin fetching devices
+---
 
-The script will display output like this: 
-Found 3 non-compliant device(s):
+## Permissions Required
 
-Device Name: LAPTOP-ABC123 | User: john.doe@company.com
-Device Name: DESKTOP-XYZ789 | User: jane.smith@company.com
+The script requests the following Microsoft Graph scopes on sign-in:
 
+- `User.Read.All`
+- `UserAuthenticationMethod.Read.All`
 
+---
 
-Current requirements on system to be able to run the script
-===========================================================
-"Requires Intune Administrator role minimum" 
+## How to Run
 
+### Step 1 — Open Azure Cloud Shell
+Go to [portal.azure.com](https://portal.azure.com) or directly to [shell.azure.com](https://shell.azure.com) and select **PowerShell**.
 
+### Step 2 — Install Modules (first time only)
+```powershell
+Install-Module Microsoft.Graph.Authentication, Microsoft.Graph.Users -Scope CurrentUser -Force
+```
 
-What this script will do
-========================
-Create a report that shows the device name and the user who has a non compliant device
+### Step 3 — Open the Editor
+Click the **{}** icon in the Cloud Shell toolbar, create a new file, paste the script, and save it as `compliance.ps1`.
 
+### Step 4 — Run the Script
+```powershell
+./compliance.ps1
+```
+Sign in with your admin account when prompted.
 
-If you want to run this script on a schedule (e.g., daily), you can create a Windows Task Scheduler job:
-========================================================================================================
-Open Task Scheduler (search for it in Windows)
-Click Create Basic Task
-Name it: Intune Compliance Check
-Set the trigger (e.g., Daily at 9 AM)
-Set the action to: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
-Add arguments: -NoProfile -ExecutionPolicy Bypass -File "C:\Users\YourUsername\Documents\Get-NonCompliantDevices.ps1"
+### Step 5 — Download Results
+When complete, download the CSV using the **⬆⬇** button in the Cloud Shell toolbar and enter `non-compliant-users.csv`.
 
+---
 
+## Output
+
+The script produces a CSV file (`non-compliant-users.csv`) with the following columns:
+
+| Column | Description |
+|---|---|
+| `Name` | User's display name |
+| `UPN` | User Principal Name (email address) |
+| `Issues` | Comma-separated list of compliance issues found |
+
+---
+
+## Limitations
+
+- Requires **no Azure AD Premium licence** — works on standard tenants
+- MFA check is done **per user** which may be slower on large tenants (100+ users)
+
+---
+
+## Troubleshooting
+
+| Error | Fix |
+|---|---|
+| `403 Forbidden` on `Get-MgUser` | Your account may lack sufficient role permissions |
+| `Module not found` | Re-run the `Install-Module` step |
+| `Connect-MgGraph` hangs | Allow popups in your browser |
+| Empty results | Check that your account has `User.Read.All` and `UserAuthenticationMethod.Read.All` consented |
