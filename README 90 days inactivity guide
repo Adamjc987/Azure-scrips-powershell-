@@ -1,61 +1,106 @@
-Powershell script for non compliant devices 
+P# Azure Inactive Users Checker
 
+A PowerShell script that connects to Microsoft Graph and identifies enabled users who have not changed their password in 90 or more days. Works without an Azure AD Premium licence.
 
+---
 
-Step by step guide on how to implement this script
-==================================================
-Press Windows Key + R on your keyboard
-Type powershell and press Enter
-Right-click on PowerShell and select "Run as administrator"
-Click "Yes" when prompted by User Account Control
+## What It Does
 
-In PowerShell, navigate to where you want to save the script (or use the default location):
-Example "cd C:\Users\YourUsername\Documents" (Replace YourUsername with your actual Windows username)
+1. Connects to Microsoft Graph using your admin account
+2. Fetches all **enabled** users from your Azure AD tenant
+3. Flags users whose **password has not changed in 90+ days**
+4. Displays results in the terminal and saves them to a CSV file
 
-Create a new PowerShell script file
-"notepad Get-NonCompliantDevices.ps1"
+> **Why password change date?** Azure AD's actual last sign-in date (`SignInActivity`) requires a Premium licence. This script uses `LastPasswordChangeDateTime` as a no-cost alternative.
 
-Copy the entire script
-Paste it into the Notepad window (Ctrl + V)
-Click File → Save (or Ctrl + S)
-Close Notepad
+---
 
-Back in PowerShell, run this command to allow script execution: "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser"
-Type Y and press Enter when prompted
-Wait for the command to complete
+## Requirements
 
-In PowerShell, run the script: ".\Get-NonCompliantDevices.ps1"
+- Azure Cloud Shell (PowerShell mode) at [shell.azure.com](https://shell.azure.com)
+- An admin account with one of the following roles:
+  - **Global Administrator**
+  - **Global Reader**
 
-A browser window will automatically open
-Sign in with your Azure/Microsoft 365 admin account
-You'll see a permissions request - click "Accept" or "Consent"
-After successful authentication, return to PowerShell
-The script will begin fetching devices
+---
 
-The script will display output like this: 
-Found 3 non-compliant device(s):
+## Permissions Required
 
-Device Name: LAPTOP-ABC123 | User: john.doe@company.com
-Device Name: DESKTOP-XYZ789 | User: jane.smith@company.com
+The script requests the following Microsoft Graph scope when you sign in:
 
+- `User.Read.All`
 
+---
 
-Current requirements on system to be able to run the script
-===========================================================
-"Requires Intune Administrator role minimum" 
+## First Time Setup
 
+Run these in Cloud Shell **before** running the script for the first time:
 
+```powershell
+Install-Module Microsoft.Graph -Scope CurrentUser -Force -AllowClobber
+```
+> Takes 2–5 minutes to complete. Only needs to be done once.
 
-What this script will do
-========================
-Create a report that shows the device name and the user who has a non compliant device
+---
 
+## How to Run
 
-If you want to run this script on a schedule (e.g., daily), you can create a Windows Task Scheduler job:
-========================================================================================================
-Open Task Scheduler (search for it in Windows)
-Click Create Basic Task
-Name it: Intune Compliance Check
-Set the trigger (e.g., Daily at 9 AM)
-Set the action to: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
-Add arguments: -NoProfile -ExecutionPolicy Bypass -File "C:\Users\YourUsername\Documents\Get-NonCompliantDevices.ps1"
+### Step 1 — Create the Script File
+```powershell
+code inactive-users.ps1
+```
+
+### Step 2 — Paste the Script
+Paste the full script into the editor and press **Ctrl + S** to save.
+
+### Step 3 — Run It
+```powershell
+./inactive-users.ps1
+```
+
+### Step 4 — Sign In
+A browser popup will appear — sign in with your **admin account** and grant the requested permissions.
+
+### Step 5 — Download the Results
+
+Click the **⬆⬇** button in the Cloud Shell toolbar, select **Download**, and enter:
+```
+inactive-users.csv
+```
+
+---
+
+## Output
+
+Results are shown in the terminal and saved to `inactive-users.csv` with the following columns:
+
+| Column | Description |
+|---|---|
+| `DisplayName` | User's full name |
+| `UserPrincipalName` | User's email / login address |
+| `LastPasswordChange` | Date the password was last changed |
+| `LicenceAssigned` | Whether the user has a licence (`True` / `False`) |
+
+---
+
+## Adjusting the 90 Day Threshold
+
+To change the inactivity period, edit this line in the script:
+
+```powershell
+$cutoff = (Get-Date).AddDays(-90)
+```
+
+For example, change `-90` to `-60` to flag users inactive for 60 days or more.
+
+---
+
+## Troubleshooting
+
+| Error | Fix |
+|---|---|
+| `Get-MgUser not recognised` | Run `Import-Module Microsoft.Graph.Users` then retry |
+| `Assembly already loaded` conflict | The script handles this automatically with `Remove-Module` at the top |
+| `403 Forbidden` | Your account is missing the required role — check you have Global Reader or above |
+| `Connect-MgGraph` hangs | Allow popups in your browser |
+| Empty results | All users changed password within the threshold — try increasing the number of days |
